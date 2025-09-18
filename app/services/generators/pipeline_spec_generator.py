@@ -4,6 +4,10 @@ from app.services.llm_service import LLMService
 ETL_SPEC_SCHEMA = {
     "type": "object",
     "properties": {
+        "pipeline_name": {
+            "type": "string",
+            "description": "A name for the pipeline",
+        },
         "source_type": {
             "type": "string",
             "description": "The source of the data this will be a file path, database connection string, API endpoint, etc.",
@@ -31,7 +35,7 @@ ETL_SPEC_SCHEMA = {
             "description": "Cron schedule for the pipeline",
         }
     },
-    "required": ["source_type", "source_path", "destination_type", "destination_name", "transformation", "schedule"],
+    "required": ["pipeline_name", "source_type", "source_path", "destination_type", "destination_name", "transformation", "schedule"],
     "additionalProperties": False,
 }
 

@@ -1,5 +1,5 @@
 from app.services.llm_service import LLMService
-from app.services.prompt_guard_service import PromptGuardService
+from app.services.guards.prompt_guard_service import PromptGuardService
 from app.services.pipeline_builder_service import PipelineBuilderService
 
 class ChatService:

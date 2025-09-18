@@ -6,3 +6,6 @@ __pycache__/
 .vscode/
 # macOS system files
 .DS_Store
+
+# Output files
+output/

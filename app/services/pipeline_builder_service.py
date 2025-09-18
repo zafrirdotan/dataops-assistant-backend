@@ -1,9 +1,10 @@
 import jsonschema
 
-from app.services.prompt_guard_service import PromptGuardService
+from app.services.generators.pipeline_code_generator import PipelineCodeGenerator
+from app.services.guards.prompt_guard_service import PromptGuardService
 from app.services.llm_service import LLMService
-from app.services.pipeline_spec_generator import PipelineSpecGenerator
-from app.services.pipeline_spec_generator import ETL_SPEC_SCHEMA
+from app.services.generators.pipeline_spec_generator import PipelineSpecGenerator
+from app.services.generators.pipeline_spec_generator import ETL_SPEC_SCHEMA
 from app.services.source.local_file_service import LocalFileService
 
 class PipelineBuilderService:
@@ -12,6 +13,7 @@ class PipelineBuilderService:
         self.llm = LLMService()
         self.spec_gen = PipelineSpecGenerator()
         self.local_file_service = LocalFileService()
+        self.code_gen = PipelineCodeGenerator()
         # Add other initializations as needed
 
     def build_pipeline(self, user_input: str) -> dict:
@@ -28,9 +30,9 @@ class PipelineBuilderService:
             return {"error": "Source/Destination connection failed.", "details": db_info.get("details")}
 
         # 5. Generate pipeline code
-        # code = self.generate_pipeline_code(spec, db_info)
-        # if not code:
-        #     return {"error": "Pipeline code generation failed."}
+        code = self.generate_pipeline_code(spec, db_info)
+        if not code:
+            return {"error": "Pipeline code generation failed."}
 
         # # 6. Create and run unit test
         # test_result = self.create_and_run_unittest(code)
@@ -50,7 +52,7 @@ class PipelineBuilderService:
         return {
             "success": True,
             "spec": spec,
-            # "code": code,
+            "code": code,
             # "unit_test": test_result,
             # "deployment": deploy_result,
             # "e2e_test": e2e_result
@@ -108,8 +110,12 @@ class PipelineBuilderService:
         return {"success": True}
 
     def generate_pipeline_code(self, spec: dict, db_info: dict) -> str:
-        # TODO: Implement code generation logic
-        return "# pipeline code"
+
+        code = self.code_gen.generate_code(spec, db_info.get("data_preview"))
+        print(code)
+        with open(f"output/{spec.get('pipeline_name')}.py", "w") as f:
+            f.write(code)
+        return code
 
     def create_and_run_unittest(self, code: str) -> dict:
         # TODO: Implement unit test generation and execution
