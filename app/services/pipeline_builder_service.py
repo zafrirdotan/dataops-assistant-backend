@@ -1,28 +1,33 @@
+import jsonschema
+
 from app.services.prompt_guard_service import PromptGuardService
 from app.services.llm_service import LLMService
 from app.services.pipeline_spec_generator import PipelineSpecGenerator
+from app.services.pipeline_spec_generator import ETL_SPEC_SCHEMA
+from app.services.source.local_file_service import LocalFileService
 
 class PipelineBuilderService:
     def __init__(self):
         self.guard = PromptGuardService()
         self.llm = LLMService()
         self.spec_gen = PipelineSpecGenerator()
+        self.local_file_service = LocalFileService()
         # Add other initializations as needed
 
     def build_pipeline(self, user_input: str) -> dict:
         # 2. Generate JSON spec
         spec = self.spec_gen.generate_spec(user_input)
 
-        # # 3. Validate schema
-        # if not self.validate_spec_schema(spec):
-        #     return {"error": "Spec schema validation failed."}
+        # 3. Validate schema
+        if not self.validate_spec_schema(spec):
+            return {"error": "Spec schema validation failed."}
 
-        # # 4. Try connecting to DB
-        # db_info = self.connect_to_db(spec)
-        # if not db_info.get("success"):
-        #     return {"error": "Database connection failed.", "details": db_info.get("details")}
+        # 4. Try connecting to source/destination
+        db_info = self.connect_to_source(spec)
+        if not db_info.get("success"):
+            return {"error": "Source/Destination connection failed.", "details": db_info.get("details")}
 
-        # # 5. Generate pipeline code
+        # 5. Generate pipeline code
         # code = self.generate_pipeline_code(spec, db_info)
         # if not code:
         #     return {"error": "Pipeline code generation failed."}
@@ -52,11 +57,54 @@ class PipelineBuilderService:
         }
 
     def validate_spec_schema(self, spec: dict) -> bool:
-        # TODO: Implement JSON schema validation
+        # Validate spec against ETL_SPEC_SCHEMA using jsonschema
+        try:
+            jsonschema.validate(instance=spec, schema=ETL_SPEC_SCHEMA)
+            return self.validate_source_path(spec)
+        except ImportError:
+            print("jsonschema package is not installed.")
+            return False
+        except jsonschema.ValidationError as e:
+            print(f"Schema validation error: {e}")
+            return False
+
+
+    def validate_source_path(self, spec: dict) -> None:
+        # If source_type is localFileCSV or localFileJSON, ensure source_path exists
+        match spec.get("source_type"):
+            case "localFileCSV":
+                if not spec.get("source_path", "").endswith('.csv'):
+                    return False
+            case "localFileJSON":
+                if not spec.get("source_path", "").endswith('.json'):
+                    return False
+            case _:
+                pass
         return True
 
-    def connect_to_db(self, spec: dict) -> dict:
-        # TODO: Implement DB connection logic
+    def connect_to_source(self, spec: dict) -> dict:
+        # Try connecting to source/destination based on spec
+
+        match spec.get("source_type"):
+            case "PostgreSQL":
+                pass
+            case "localFileCSV":
+                data = self.local_file_service.retrieve_recent_data_files(spec.get("source_path"), date_column="event_date", date_value="2025-09-18")
+                if data is not None:
+                    data_preview = data.head().to_dict(orient="records")
+                    return {"success": True, "data_preview": data_preview}
+                else:
+                    return {"success": False, "details": "No recent data files found."}
+            case "localFileJSON":
+                if self.local_file_service.check_file_exists(spec.get("source_path")):
+                    return {"success": True, "data_preview": data_preview}
+                else:
+                    return {"success": False, "details": "No recent data files found."}
+            case "sqlLite":
+                pass
+            case "api":
+                pass
+
         return {"success": True}
 
     def generate_pipeline_code(self, spec: dict, db_info: dict) -> str:

@@ -23,11 +23,18 @@ class ChatService:
             }
 
         if analysis["decision"] == "review":
-            return {
-                "decision": "review",
-                "error": "Input requires review.",
-                "findings": analysis["findings"]
-            }
+
+            if len(analysis["findings"]) == 1 and analysis["findings"][0].get("rule") == "python_import":
+                # If only python_import is found, allow it
+
+                # TODO: Log this event for auditing and send to LLM for confirmation
+                pass
+            else:
+                return {
+                    "decision": "review",
+                    "error": "Input requires review.",
+                    "findings": analysis["findings"]
+                }
 
         # Step 2: Generate pipeline 
         build_result = self.pipeline_builder_service.build_pipeline(analysis["cleaned"])

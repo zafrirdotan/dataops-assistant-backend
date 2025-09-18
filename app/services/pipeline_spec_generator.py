@@ -4,19 +4,23 @@ from app.services.llm_service import LLMService
 ETL_SPEC_SCHEMA = {
     "type": "object",
     "properties": {
-        "source": {
+        "source_type": {
             "type": "string",
             "description": "The source of the data this will be a file path, database connection string, API endpoint, etc.",
-            "enum": ["localFile", "PostgreSQL", "api"],
+            "enum": ["localFileCSV","localFileJSON",  "PostgreSQL", "api"],
         },
         "source_path": {
             "type": "string",
             "description": "The path to the source file (if source is localFile)",
         },
-        "destination": {
+        "destination_type": {
             "type": "string",
             "description": "The destination for the data",
-            "enum": ["sqlLite", "PostgreSQL", "local", "file"],
+            "enum": ["sqlLite", "PostgreSQL", "file"],
+        },
+        "destination_name": {
+            "type": "string",
+            "description": "The name of the destination table or file without extension",
         },
         "transformation": {
             "type": "string",
@@ -27,7 +31,7 @@ ETL_SPEC_SCHEMA = {
             "description": "Cron schedule for the pipeline",
         }
     },
-    "required": ["source", "source_path", "destination", "transformation", "schedule"],
+    "required": ["source_type", "source_path", "destination_type", "destination_name", "transformation", "schedule"],
     "additionalProperties": False,
 }
 
