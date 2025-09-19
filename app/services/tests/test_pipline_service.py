@@ -16,7 +16,7 @@ class TestPipelineService:
         with open(req_path, "w") as f:
             f.write(requirements)
         with open(env_path, "w") as f:
-            f.write("DATA_ROUTE=../../data\n")
+            f.write("DATA_FOLDER=../../data\n")
         return folder
 
     def run_pipeline_test(self, folder: str, pipeline_name: str, execution_mode="venv") -> dict:
