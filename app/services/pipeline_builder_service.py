@@ -1,4 +1,5 @@
 import jsonschema
+import runpy
 
 from app.services.generators.pipeline_code_generator import PipelineCodeGenerator
 from app.services.guards.prompt_guard_service import PromptGuardService
@@ -6,6 +7,7 @@ from app.services.llm_service import LLMService
 from app.services.generators.pipeline_spec_generator import PipelineSpecGenerator
 from app.services.generators.pipeline_spec_generator import ETL_SPEC_SCHEMA
 from app.services.source.local_file_service import LocalFileService
+from app.services.tests.test_pipline_service import TestPipelineService
 
 class PipelineBuilderService:
     def __init__(self):
@@ -14,6 +16,7 @@ class PipelineBuilderService:
         self.spec_gen = PipelineSpecGenerator()
         self.local_file_service = LocalFileService()
         self.code_gen = PipelineCodeGenerator()
+        self.test_service = TestPipelineService()
         # Add other initializations as needed
 
     def build_pipeline(self, user_input: str) -> dict:
@@ -30,14 +33,14 @@ class PipelineBuilderService:
             return {"error": "Source/Destination connection failed.", "details": db_info.get("details")}
 
         # 5. Generate pipeline code
-        code = self.generate_pipeline_code(spec, db_info)
+        code, requirements = self.code_gen.generate_code(spec, db_info.get("data_preview"))
         if not code:
             return {"error": "Pipeline code generation failed."}
 
         # # 6. Create and run unit test
-        # test_result = self.create_and_run_unittest(code)
-        # if not test_result.get("success"):
-        #     return {"error": "Unit test failed.", "details": test_result.get("details")}
+        test_result = self.create_and_run_unittest(spec, code, requirements)
+        if not test_result.get("success"):
+            return {"error": "Unit test failed.", "details": test_result.get("details")}
 
         # # 7. Deploy
         # deploy_result = self.deploy_pipeline(code)
@@ -109,17 +112,8 @@ class PipelineBuilderService:
 
         return {"success": True}
 
-    def generate_pipeline_code(self, spec: dict, db_info: dict) -> str:
-
-        code = self.code_gen.generate_code(spec, db_info.get("data_preview"))
-        print(code)
-        with open(f"output/{spec.get('pipeline_name')}.py", "w") as f:
-            f.write(code)
-        return code
-
-    def create_and_run_unittest(self, code: str) -> dict:
-        # TODO: Implement unit test generation and execution
-        return {"success": True}
+    def create_and_run_unittest(self, spec: dict, code: str, requirements: str) -> dict:
+        return self.test_service.create_and_run_unittest(spec.get("pipeline_name"), code, requirements, execution_mode="venv")
 
     def deploy_pipeline(self, code: str) -> dict:
         # TODO: Implement deployment logic

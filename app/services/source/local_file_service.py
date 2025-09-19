@@ -5,12 +5,12 @@ import time
 
 class LocalFileService:
     def retrieve_recent_data_files(self, file_pattern, date_column=None, date_value=None):
-        """
+        """ 
         Dynamically extract data from CSV or JSON files matching the pattern.
         Optionally filter by date_column and date_value.
         Returns a concatenated DataFrame of all matching rows.
         """
-        files = glob.glob(file_pattern)
+        files = glob.glob(f".{file_pattern}")
         now = time.time()
         last_24_hours = now - 24 * 60 * 60
         recent_files = [f for f in files if os.path.getmtime(f) >= last_24_hours]
