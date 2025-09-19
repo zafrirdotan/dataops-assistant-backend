@@ -9,10 +9,14 @@ class TestPipelineService:
         os.makedirs(folder, exist_ok=True)
         code_path = os.path.join(folder, f"{pipeline_name}_test.py")
         req_path = os.path.join(folder, "requirements.txt")
+        env_path = os.path.join(folder, ".env")
+
         with open(code_path, "w") as f:
             f.write(code)
         with open(req_path, "w") as f:
             f.write(requirements)
+        with open(env_path, "w") as f:
+            f.write("DATA_ROUTE=../../data\n")
         return folder
 
     def run_pipeline_test(self, folder: str, pipeline_name: str, execution_mode="venv") -> dict:
