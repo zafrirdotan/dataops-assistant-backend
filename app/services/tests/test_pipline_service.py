@@ -4,6 +4,9 @@ import sys
 import runpy
 
 class TestPipelineService:
+    def __init__(self, log):
+            self.log = log
+
     def create_pipeline_output(self, pipeline_name: str, code: str, requirements: str, output_dir="../pipelines") -> str:
         folder = os.path.abspath(os.path.join(output_dir, pipeline_name))
         os.makedirs(folder, exist_ok=True)
@@ -20,15 +23,21 @@ class TestPipelineService:
         return folder
 
     def run_pipeline_test(self, folder: str, pipeline_name: str, execution_mode="venv") -> dict:
+        self.log.info(f"Running pipeline test for {pipeline_name}...")
         code_path = os.path.join(folder, f"{pipeline_name}_test.py")
         req_path = os.path.join(folder, "requirements.txt")
         if execution_mode == "venv":
-            venv_path = os.path.join(folder, "venv")
-            subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
-            pip_path = os.path.join(venv_path, "bin", "pip")
-            python_path = os.path.join(venv_path, "bin", "python")
-            subprocess.run([pip_path, "install", "-r", req_path], check=True)
-            result = subprocess.run([python_path, code_path], capture_output=True, text=True, cwd=folder)
+            try: 
+                venv_path = os.path.join(folder, "venv")
+                subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
+                pip_path = os.path.join(venv_path, "bin", "pip")
+                python_path = os.path.join(venv_path, "bin", "python")
+                subprocess.run([pip_path, "install", "-r", req_path], check=True)
+                result = subprocess.run([python_path, code_path], capture_output=True, text=True, cwd=folder)
+                self.log.info(f"Pipeline test completed for {pipeline_name}.")
+            except Exception as e:
+                self.log.error(f"Error occurred while running pipeline test: {e}")
+                return {"success": False, "details": str(e)}
         elif execution_mode == "docker":
             dockerfile_path = os.path.join(folder, "Dockerfile")
             dockerfile_content = f"""

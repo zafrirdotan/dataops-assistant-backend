@@ -1,3 +1,4 @@
+import logging
 import jsonschema
 import runpy
 
@@ -11,35 +12,47 @@ from app.services.tests.test_pipline_service import TestPipelineService
 
 class PipelineBuilderService:
     def __init__(self):
+        self.log = logging.getLogger(__name__)
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.guard = PromptGuardService()
         self.llm = LLMService()
         self.spec_gen = PipelineSpecGenerator()
         self.local_file_service = LocalFileService()
         self.code_gen = PipelineCodeGenerator()
-        self.test_service = TestPipelineService()
+        self.test_service = TestPipelineService(self.log)
         # Add other initializations as needed
 
     def build_pipeline(self, user_input: str) -> dict:
         # 2. Generate JSON spec
+        self.log.info("Generating pipeline specification...")
         spec = self.spec_gen.generate_spec(user_input)
 
         # 3. Validate schema
+        self.log.info("Validating pipeline specification schema...")
         if not self.validate_spec_schema(spec):
+            self.log.error("Pipeline specification schema validation failed.")
             return {"error": "Spec schema validation failed."}
 
         # 4. Try connecting to source/destination
+        self.log.info("Connecting to source/destination to validate access...")
         db_info = self.connect_to_source(spec)
         if not db_info.get("success"):
+            self.log.error("Source/Destination connection failed.")
             return {"error": "Source/Destination connection failed.", "details": db_info.get("details")}
 
         # 5. Generate pipeline code
+        self.log.info("Generating pipeline code...")
         code, requirements = self.code_gen.generate_code(spec, db_info.get("data_preview"))
         if not code:
+            self.log.error("Pipeline code generation failed.")
             return {"error": "Pipeline code generation failed."}
 
         # # 6. Create and run unit test
+        self.log.info("Creating and running unit tests...")
         test_result = self.create_and_run_unittest(spec, code, requirements)
+        
         if not test_result.get("success"):
+            self.log.error("Unit test failed.")
             return {"error": "Unit test failed.", "details": test_result.get("details")}
 
         # # 7. Deploy

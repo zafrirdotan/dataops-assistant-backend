@@ -13,7 +13,11 @@ class LocalFileService:
         files = glob.glob(f".{file_pattern}")
         now = time.time()
         last_24_hours = now - 24 * 60 * 60
-        recent_files = [f for f in files if os.path.getmtime(f) >= last_24_hours]
+        # recent_files = [f for f in files if os.path.getmtime(f) >= last_24_hours]
+        
+        # temp - all files
+        # TODO - restore last_24_hours filter
+        recent_files = files
         data_frames = []
         for file in recent_files:
             if file.endswith('.csv'):
