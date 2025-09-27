@@ -1,5 +1,7 @@
 import json
 from app.services.llm_service import LLMService
+import datetime
+
 
 ETL_SPEC_SCHEMA = {
     "type": "object",
@@ -67,5 +69,10 @@ class PipelineSpecGenerator:
                 }
             }
         )
-        # Ensure the response is always a list, then convert each item to a dict
-        return json.loads(response.output_text)
+        spec = json.loads(response.output_text)
+        
+        date_str = datetime.datetime.now().strftime('%Y%m%d')
+        # Append date to pipeline_name
+        if 'pipeline_name' in spec:
+            spec['pipeline_name'] = f"{spec['pipeline_name']}_{date_str}"
+        return spec
