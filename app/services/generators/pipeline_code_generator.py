@@ -18,7 +18,7 @@ class PipelineCodeGenerator:
     def __init__(self):
         self.llm = LLMService()
 
-    def generate_code(self, spec: dict, data_preview: dict) -> str:
+    def generate_code(self, spec: dict, data_preview: dict, last_code: str = None, last_error: str = None, python_test: str = None) -> str:
         """
         Generate transformation code including data loading, transformation, and saving
         as well as unit tests.
@@ -46,6 +46,9 @@ class PipelineCodeGenerator:
             All generated files—the main code (`{pipeline_name}.py`), the requirements file (`requirements.txt`), and the unit test (`{pipeline_name}_test.py`)—should be placed in the same folder: `../pipelines/{pipeline_name}/`.
             In the unit test, import functions from `{pipeline_name}` (e.g., `from {pipeline_name} import ...`).
 
+            The ETL pipeline must ingest all available data from the source files, regardless of the number of records or partitions.
+            If partitioning Parquet files, use a strategy that avoids exceeding system limits (e.g., group by year or month if there are too many unique dates, or write without partitioning if necessary).
+
             The input data files path should be loaded from a .env file using the variable DATA_ROUTE. In the generated code, use:
 
             from dotenv import load_dotenv
@@ -62,6 +65,19 @@ class PipelineCodeGenerator:
             Additionally, generate a small unit test (using pytest) that verifies the output of the main transformation function to ensure it works correctly. The unit test should be returned as a third code block (```python test ... ```).
             Return only three code blocks: one with Python code (```python ... ```), one with requirements.txt (```requirements.txt ... ```), and one with the unit test (```python test ... ```).
             Do not include explanations or extra text.
+            """
+        
+        if last_code and last_error:
+            prompt += f"""
+            The last generated code had the following error when executed:
+            {last_error}
+
+            Here is the last generated code:
+            {last_code}
+            This is the test code:
+            {python_test}
+
+            Please fix the code to resolve the error.
             """
 
         response = self.llm.response_create(

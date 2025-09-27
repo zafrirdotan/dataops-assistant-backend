@@ -40,20 +40,37 @@ class PipelineBuilderService:
             self.log.error("Source/Destination connection failed.")
             return {"error": "Source/Destination connection failed.", "details": db_info.get("details")}
 
-        # 5. Generate pipeline code
-        self.log.info("Generating pipeline code...")
-        code, requirements, python_test = self.code_gen.generate_code(spec, db_info.get("data_preview"))
-        if not code:
-            self.log.error("Pipeline code generation failed.")
-            return {"error": "Pipeline code generation failed."}
+        # 5-6. Generate pipeline code and run unit test, retry if unit test fails
+        generate_attempts = 0
+        code = None
+        python_test = None
+        last_error = None
+        while True:
+            generate_attempts += 1
 
-        # # 6. Create and run unit test
-        self.log.info("Creating and running unit tests...")
-        test_result = self.create_and_run_unittest(spec, code, requirements, python_test)
-        
-        if not test_result.get("success"):
-            self.log.error("Unit test failed.")
-            return {"error": "Unit test failed.", "details": test_result.get("details")}
+            self.log.info("Generating pipeline code...")
+            code, requirements, python_test = self.code_gen.generate_code(spec,
+                                                                            db_info.get("data_preview"),
+                                                                            last_code=code,
+                                                                            last_error=last_error,
+                                                                            python_test=python_test
+                                                                            )
+            if not code:
+                self.log.error("Pipeline code generation failed.")
+                return {"error": "Pipeline code generation failed."}
+
+            self.log.info("Creating and running unit tests...")
+            test_result = self.create_and_run_unittest(spec, code, requirements, python_test)
+            if test_result.get("success"):
+                break
+            else:
+                last_error = test_result.get("details")
+                self.log.error("Unit test failed. Retrying pipeline code generation...")
+            # Optionally, add a retry limit to avoid infinite loops
+            if generate_attempts > 3:
+                self.log.error("Max retry attempts reached.")
+                return {"error": "Max retry attempts reached."}
+        self.log.info("Pipeline code generation and unit tests completed successfully. After %d attempts.", generate_attempts)
 
         # # 7. Deploy
         # deploy_result = self.deploy_pipeline(code)
@@ -105,12 +122,26 @@ class PipelineBuilderService:
 
         match spec.get("source_type"):
             case "PostgreSQL":
-                pass
+                try: 
+                    local_db = self.postgres_service.connect(spec.get("source_config"))
+                    if local_db:
+                        data = self.postgres_service.retrieve_data(local_db, spec.get("source_table"))
+                        if data is not None:
+                            data_preview = data.head().to_dict(orient="records")
+                        return {"success": True, "data_preview": data_preview}
+                    else:
+                        return {"failed": False, "details": "No data retrieved from source table."}
+                except Exception as e:
+                    return {"failed": False, "details": "Failed to connect to PostgreSQL source."}
+
             case "localFileCSV":
-                data = self.local_file_service.retrieve_recent_data_files(spec.get("source_path"), date_column="event_date", date_value="2025-09-18")
-                if data is not None:
-                    data_preview = data.head().to_dict(orient="records")
-                    return {"success": True, "data_preview": data_preview}
+                try:
+                    data = self.local_file_service.retrieve_recent_data_files(spec.get("source_path"), date_column="event_date", date_value="2025-09-18")
+                    if data is not None:
+                        data_preview = data.head().to_dict(orient="records")
+                        return {"success": True, "data_preview": data_preview}
+                except Exception as e:
+                    return {"failed": False, "details": "Failed to connect to local CSV source."}
                 else:
                     return {"success": False, "details": "No recent data files found."}
             case "localFileJSON":

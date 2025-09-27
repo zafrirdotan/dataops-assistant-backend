@@ -52,11 +52,13 @@ class TestPipelineService:
                         cwd=folder
                     )
                     if test_result.returncode != 0:
-                        raise Exception(test_result.stderr)
+                        self.log.error(f"Unit test failed for {pipeline_name} with error: {test_result.stderr} and stdout: {test_result.stdout}")
+                        return {"success": False, "details": f"Unit test failed with error: {test_result.stderr}, stdout: {test_result.stdout}"}
+
                     self.log.info(f"Unit test executed successfully for {pipeline_name} with output: {test_result.stdout}")
-                    return {"success": True, "details": "Unit test executed successfully."}
+                    return {"success": True, "details": "Unit test executed successfully.", "stdout": test_result.stdout}
                 except Exception as e:
-                    self.log.error(f"Unit test failed for {pipeline_name} with error: {e}")
+                    self.log.error(f"Unit test failed for {pipeline_name} with exception: {e}")
                     return {"success": False, "details": str(e)}
             except Exception as e:
                 self.log.error(f"Error occurred while running pipeline test: {e}")
