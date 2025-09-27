@@ -70,8 +70,8 @@ class PipelineSpecGenerator:
             }
         )
         spec = json.loads(response.output_text)
-        
-        date_str = datetime.datetime.now().strftime('%Y%m%d')
+
+        date_str = datetime.datetime.now().strftime('%Y%m%d_%H%M')
         # Append date to pipeline_name
         if 'pipeline_name' in spec:
             spec['pipeline_name'] = f"{spec['pipeline_name']}_{date_str}"
