@@ -7,24 +7,27 @@ class TestPipelineService:
     def __init__(self, log):
             self.log = log
 
-    def create_pipeline_output(self, pipeline_name: str, code: str, requirements: str, output_dir="../pipelines") -> str:
+    def create_pipeline_output(self, pipeline_name: str, code: str, requirements: str, python_test: str, output_dir="../pipelines") -> str:
         folder = os.path.abspath(os.path.join(output_dir, pipeline_name))
         os.makedirs(folder, exist_ok=True)
-        code_path = os.path.join(folder, f"{pipeline_name}_test.py")
+        code_path = os.path.join(folder, f"{pipeline_name}.py")
         req_path = os.path.join(folder, "requirements.txt")
+        test_path = os.path.join(folder, f"{pipeline_name}_test.py")
         env_path = os.path.join(folder, ".env")
 
         with open(code_path, "w") as f:
             f.write(code)
         with open(req_path, "w") as f:
             f.write(requirements)
+        with open(test_path, "w") as f:
+            f.write(python_test)
         with open(env_path, "w") as f:
             f.write("DATA_FOLDER=../../data\n")
         return folder
 
     def run_pipeline_test(self, folder: str, pipeline_name: str, execution_mode="venv") -> dict:
         self.log.info(f"Running pipeline test for {pipeline_name}...")
-        code_path = os.path.join(folder, f"{pipeline_name}_test.py")
+        code_path = os.path.join(folder, f"{pipeline_name}.py")
         req_path = os.path.join(folder, "requirements.txt")
         if execution_mode == "venv":
             try: 
@@ -34,7 +37,27 @@ class TestPipelineService:
                 python_path = os.path.join(venv_path, "bin", "python")
                 subprocess.run([pip_path, "install", "-r", req_path], check=True)
                 result = subprocess.run([python_path, code_path], capture_output=True, text=True, cwd=folder)
-                self.log.info(f"Pipeline test completed for {pipeline_name}.")
+                self.log.info(f"Pipeline test completed for {pipeline_name} with return code {result.returncode}.")
+                if result.returncode != 0:
+                    self.log.error(f"Pipeline test failed for {pipeline_name} with error: {result.stderr}")
+                    return {"success": False, "details": result.stderr}
+                
+                # Run test to verify the output of the main transformation function
+                test_path = os.path.join(folder, f"{pipeline_name}_test.py")
+                try:
+                    test_result = subprocess.run(
+                        [python_path, "-m", "pytest", test_path],
+                        capture_output=True,
+                        text=True,
+                        cwd=folder
+                    )
+                    if test_result.returncode != 0:
+                        raise Exception(test_result.stderr)
+                    self.log.info(f"Unit test executed successfully for {pipeline_name} with output: {test_result.stdout}")
+                    return {"success": True, "details": "Unit test executed successfully."}
+                except Exception as e:
+                    self.log.error(f"Unit test failed for {pipeline_name} with error: {e}")
+                    return {"success": False, "details": str(e)}
             except Exception as e:
                 self.log.error(f"Error occurred while running pipeline test: {e}")
                 return {"success": False, "details": str(e)}
@@ -61,6 +84,6 @@ class TestPipelineService:
             "stderr": result.stderr
         }
 
-    def create_and_run_unittest(self, name: str, code: str, requirements: str, execution_mode="venv") -> dict:
-        folder = self.create_pipeline_output(name, code, requirements)
+    def create_and_run_unittest(self, name: str, code: str, requirements: str, python_test: str, execution_mode="venv") -> dict:
+        folder = self.create_pipeline_output(name, code, requirements, python_test)
         return self.run_pipeline_test(folder, name, execution_mode)

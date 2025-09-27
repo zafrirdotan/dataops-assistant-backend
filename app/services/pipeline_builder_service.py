@@ -42,14 +42,14 @@ class PipelineBuilderService:
 
         # 5. Generate pipeline code
         self.log.info("Generating pipeline code...")
-        code, requirements = self.code_gen.generate_code(spec, db_info.get("data_preview"))
+        code, requirements, python_test = self.code_gen.generate_code(spec, db_info.get("data_preview"))
         if not code:
             self.log.error("Pipeline code generation failed.")
             return {"error": "Pipeline code generation failed."}
 
         # # 6. Create and run unit test
         self.log.info("Creating and running unit tests...")
-        test_result = self.create_and_run_unittest(spec, code, requirements)
+        test_result = self.create_and_run_unittest(spec, code, requirements, python_test)
         
         if not test_result.get("success"):
             self.log.error("Unit test failed.")
@@ -125,8 +125,8 @@ class PipelineBuilderService:
 
         return {"success": True}
 
-    def create_and_run_unittest(self, spec: dict, code: str, requirements: str) -> dict:
-        return self.test_service.create_and_run_unittest(spec.get("pipeline_name"), code, requirements, execution_mode="venv")
+    def create_and_run_unittest(self, spec: dict, code: str, requirements: str, python_test: str) -> dict:
+        return self.test_service.create_and_run_unittest(spec.get("pipeline_name"), code, requirements, python_test, execution_mode="venv")
 
     def deploy_pipeline(self, code: str) -> dict:
         # TODO: Implement deployment logic
