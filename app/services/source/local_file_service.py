@@ -10,11 +10,14 @@ class LocalFileService:
         Optionally filter by date_column and date_value.
         Returns a concatenated DataFrame of all matching rows.
         """
-        files = glob.glob(f".{file_pattern}")
-        now = time.time()
-        last_24_hours = now - 24 * 60 * 60
-        # recent_files = [f for f in files if os.path.getmtime(f) >= last_24_hours]
-        
+        try:
+            files = glob.glob(f".{file_pattern}")
+            now = time.time()
+            last_24_hours = now - 24 * 60 * 60
+            # recent_files = [f for f in files if os.path.getmtime(f) >= last_24_hours]
+        except Exception as e:
+            raise FileNotFoundError(f"Error accessing files for pattern: {file_pattern}. Details: {e}")
+        print(f"Files found for pattern {file_pattern}: {files}")
         # temp - all files
         # TODO - restore last_24_hours filter
         recent_files = files
