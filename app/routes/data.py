@@ -6,7 +6,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-storage_service = MinioStorage()
+
+try:
+    storage_service = MinioStorage()
+except Exception as e:
+    logger.error(f"Error initializing storage service: {e}")
 
 class DataUploadResponse(BaseModel):
     message: str

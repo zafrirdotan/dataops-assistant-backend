@@ -8,8 +8,10 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-storage_service = MinioStorage()
+try:
+    storage_service = MinioStorage()
+except Exception as e:
+    logger.error(f"Error initializing storage service: {e}")
 
 @asynccontextmanager
 async def main(app: FastAPI):
